@@ -1,0 +1,24 @@
+name:                PR
+version:             0.1.0.0
+-- synopsis:
+-- description:
+license:             BSD3
+license-file:        LICENSE
+author:              Jarek Liesen
+maintainer:          jliesen@uni-potsdam.com
+copyright:           2019 Jarek Liesen
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable PR
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  other-modules:       Syntax,
+                       Parser,
+                       Evaluator,
+                       Utils
+  build-depends:       base >= 4.7 && < 5,
+                       transformers >= 0.4,
+                       mtl >= 2.2
