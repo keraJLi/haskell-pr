@@ -6,10 +6,12 @@ module Evaluator (
   , evaluate
 ) where 
 
+import Control.Monad (unless)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Class (lift)
 
+import Utils
 import Syntax
 
 
@@ -18,10 +20,10 @@ applyEnv env (Use name) =
   case lookup name env of
     Nothing  -> throwE $ "Function " ++ name ++ " not found."
     Just fun -> return fun
-applyEnv env (Conc f g) = do
+applyEnv env (Comp f g) = do
   f' <- applyEnv env f
-  g' <- applyEnv env g
-  return (Conc f' g')
+  g' <- mapM (applyEnv env) g
+  return (Comp f' g')
 applyEnv env (Rec f g) = do
   f' <- applyEnv env f
   g' <- applyEnv env g
@@ -39,12 +41,14 @@ checkArity _ pr@(Proj ar p)
   | ar < 1 = throwE $ "Arity was smaller than 1 in " ++ show pr
   | p  < 0 = throwE $ "Projection index was smaller than 0 in " ++ show pr
   | otherwise = return ar
-checkArity e (Conc f g) = do
+checkArity e (Comp f g) = do
   arf <- checkArity e f
-  arg <- checkArity e g
-  if arf == 1
-    then return arg
-    else throwE $ show f ++ " does not have and arity of one!"
+  arg <- mapM (checkArity e) g
+  unless (allEq arg) $
+    throwE $ "The functions in " ++ show g ++ " have different arities!"
+  unless (arf == length arg) $
+    throwE $ show f ++ " does not have and arity of one!"
+  return (head arg)
 checkArity e (Rec f g) = do
   arf <- checkArity e f
   arg <- checkArity e g
@@ -74,7 +78,7 @@ reduce _ (App (Const _ c) _)   = return $ Lit c
 reduce _ (App (Proj _ p) xs)   = return $ xs !! (p-1)
 reduce _ (App Succ [Lit x])    = return $ Lit (x + 1)
 reduce e (App Succ [x])        = reduce e x >>= \ n -> return $ App Succ [n]
-reduce _ (App (Conc f g) xs)   = return $ App f [App g xs]
+reduce _ (App (Comp f gs) xs)  = return $ App f [App g xs | g <- gs]
 reduce e (App (Rec f g) xs)    =
   case last xs of
     Lit 0 -> return $ App f (init xs)

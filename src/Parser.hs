@@ -4,6 +4,7 @@ module Parser (
   , Arity
   , Error
   , parse
+  , expr, def
 ) where
 
 import Control.Monad (guard)
@@ -71,7 +72,6 @@ rec = do
 
 def :: ReadP PR
 def = do
-  skipSpaces
   name <- munch1 (`elem` ['a'..'z'])
   reserved "="
   e <- expr
@@ -86,17 +86,27 @@ use = fmap Use $ do
 func :: ReadP PR
 func = use <++ choice [succ, const, proj, rec]
 
+comp :: ReadP PR
+comp = do
+  f <- func +++ betweenReserved "(" ")" comp
+  reserved "."
+  gs <- fmap (: []) func
+        +++ betweenReserved "(" ")" ((func +++ comp) `sepBy1` reserved ",")
+  return $ Comp f gs
+
 app :: ReadP [PR]
 app = betweenReserved "(" ")" ((Lit <$> number) `sepBy` reserved ",")
 
-expr :: ReadP PR
-expr = do
-  let funcs = def <++ chainr1 func (reserved "." >> return Conc)
-  fun <- betweenReserved "(" ")" funcs <++ funcs
+expr' :: ReadP PR
+expr' = do
+  fun <- def +++ func +++ comp
   a <- option Nothing (Just <$> app)
   case a of
     Nothing -> return fun
     Just x  -> return (App fun x)
+
+expr :: ReadP PR
+expr = betweenReserved "(" ")" expr' +++ expr'
 
 parse :: String -> Except Error PR
 parse s = 

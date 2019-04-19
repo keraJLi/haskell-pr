@@ -4,6 +4,7 @@ module Utils (
   , removeSuffix
   , split
   , liftExceptT
+  , allEq
 ) where
 
 import Control.Monad.Trans.Except
@@ -28,3 +29,7 @@ split c cs
 
 liftExceptT :: Monad m => Except a b -> ExceptT a m b
 liftExceptT = ExceptT . return . runExcept
+
+allEq :: Eq a => [a] -> Bool
+allEq []     = True
+allEq (x:xs) = all (== x) xs

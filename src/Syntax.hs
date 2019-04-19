@@ -16,7 +16,7 @@ data PR = Def String PR
         | Use String
         | App PR [PR]
         | Lit Int
-        | Conc PR PR
+        | Comp PR [PR]
         | Succ
         | Const Arity Int
         | Proj Arity Int
@@ -24,12 +24,17 @@ data PR = Def String PR
   deriving (Eq)
 
 instance Show PR where
+  -- Special cases
+  show (App c@(Comp _ _) xs) = 
+    "(" ++ show c ++ ")(" ++ (", " `intercalate` fmap show xs) ++ ")"
+  show (Comp c@(Comp _ _) h) = "(" ++ show c ++ ") . " ++ show h
+
+  -- Rest
   show (Def name p) = name ++ " = " ++ show p
   show (Use name)   = name
-  show (App c@(Conc _ _) xs) = "(" ++ show c ++ ")(" ++ (", " `intercalate` fmap show xs) ++ ")"
   show (App f xs)   = show f ++ "(" ++ (", " `intercalate` fmap show xs) ++ ")"
   show (Lit l)      = show l
-  show (Conc f g)   = show f ++ " . " ++ show g
+  show (Comp f g)   = show f ++ " . " ++ show g
   show Succ         = "s"
   show (Const ar c) = "c[" ++ show ar ++ "," ++ show c ++ "]"
   show (Proj ar i)  = "pr[" ++ show ar ++ "," ++ show i ++ "]"

@@ -8,6 +8,7 @@ import Control.Monad.Trans.Except (runExceptT)
 import CommandLine
 import Interaction
 
+
 execCmd :: Command -> IO ()
 execCmd Help = putStrLn usage
 execCmd Repl = repl []

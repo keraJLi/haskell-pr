@@ -18,7 +18,9 @@ executable PR
   other-modules:       Syntax,
                        Parser,
                        Evaluator,
-                       Utils
+                       Utils,
+                       CommandLine,
+                       Interaction
   build-depends:       base >= 4.7 && < 5,
                        transformers >= 0.4,
                        mtl >= 2.2
