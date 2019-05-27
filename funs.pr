@@ -1,15 +1,17 @@
-p 	  = Pr{c[0,0], pr[2,1]};
-add   = Pr{pr[1,1], s . pr[3,3]};
-sub   = Pr{pr[1,1], p . pr[3,3]};
-mul   = Pr{c[1,0], add . (pr[3,3], pr[3,1])};
-exp   = Pr{c[1,1], mul . (pr[3,3], pr[3,1])};
-fak   = Pr{c[0,1], mul . (s . pr[2,1], pr[2,2])};
-sign  = Pr{c[0,0], c[2,1]};
-diff  = add . (sub . (pr[2,1], pr[2,2]), sub . (pr[2,2], pr[2,1]));
-eq    = sub . (c[2,1], (sign . diff) . (pr[2,1], pr[2,2]));
-gr    = (sign . sub) . (pr[2,1], pr[2,2]);
-ls    = (sign . sub) . (pr[2,2], pr[2,1]);
-min   = add . (mul . (sub . (c[2,1], gr . (pr[2,1], pr[2,2])), pr[2,1]), mul . ((sign . gr) . (pr[2,1], pr[2,2]), pr[2,2]));
-neg = sub . (c[1,1], pr[1,1]);
-delta = ls . (s . pr[2,1], mul . (s . pr[2,2], s . pr[2,2]));
-sqrt  = Pr{c[0,0], add . (mul . (pr[2,2], delta), mul . (s . pr[2,2], neg . delta))}
+p 	  := Pr{c[0,0], pr[2,1]};
+add   := Pr{pr[1,1], s . pr[3,3]};
+sub   := Pr{pr[1,1], p . pr[3,3]};
+mul   := Pr{c[1,0], add . (pr[3,3], pr[3,1])};
+exp   := Pr{c[1,1], mul . (pr[3,3], pr[3,1])};
+fak   := Pr{c[0,1], mul . (s . pr[2,1], pr[2,2])};
+sign  := Pr{c[0,0], c[2,1]};
+diff  := add . (sub . (pr[2,1], pr[2,2]), sub . (pr[2,2], pr[2,1]));
+eq    := sub . (c[2,1], (sign . diff) . (pr[2,1], pr[2,2]));
+gr    := (sign . sub) . (pr[2,1], pr[2,2]);
+ls    := (sign . sub) . (pr[2,2], pr[2,1]);
+min   := add . (mul . (sub . (c[2,1], gr . (pr[2,1], pr[2,2])), pr[2,1]), mul . ((sign . gr) . (pr[2,1], pr[2,2]), pr[2,2]));
+neg   := sub . (c[1,1], pr[1,1]);
+delta := ls . (s . pr[2,1], mul . (s . pr[2,2], s . pr[2,2]));
+sqrt  := Pr{c[0,0], add . (mul . (pr[2,2], delta), mul . (s . pr[2,2], neg . delta))};
+
+show add(10,2)

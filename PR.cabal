@@ -23,4 +23,5 @@ executable PR
                        Interaction
   build-depends:       base >= 4.7 && < 5,
                        transformers >= 0.4,
-                       mtl >= 2.2
+                       parsec >= 3.0.0.0,
+                       containers >= 0.1.0.0
