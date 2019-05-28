@@ -73,5 +73,3 @@ instance Show PRFun where
 instance Show PRExpr where
   show (Lit n)    = show n
   show (App f es) = show f ++ "(" ++ (", " `intercalate` fmap show es) ++ ")"
-  -- show (App c@(Comp _ _) es) = 
-  --   "(" ++ show c ++ ")(" ++ (", " `intercalate` fmap show es) ++ ")"

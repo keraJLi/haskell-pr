@@ -37,18 +37,6 @@ checkArity e (Rec f g) = do
     then return (arf + 1)
     else throwE $ sf ++ " and " ++ sg ++ " do not have arities k-1 and k+1!"
   where (sf, sg) = (show f, show g)
--- checkArity e (App f x) = do
---   ar <- checkArity e f 
---   if ar == length x 
---     then return 0
---     else throwE $ show f ++ " has arity " ++ show ar 
---                 ++ " but is applied to " ++ show (length x) ++ " arguments!"
--- checkArity e (Use f)   = 
---   case lookup f e of
---     Nothing -> throwE $ "Expression " ++ f ++ " not found!"
---     Just p  -> checkArity e p
--- checkArity e (Def _ f) = checkArity e f
--- checkArity _ (Lit l)   = throwE $ show l ++ " unexpected!"
 
 reduce :: NameEnv -> PRExpr -> Except Error PRExpr
 reduce _ (App (Const _ c) _)   = return $ Lit c
@@ -66,14 +54,7 @@ reduce e (App (Rec f g) xs)    =
       return $ App (Rec f g) (init xs ++ [p])
 reduce _ p = throwE $ "Did not know what to do while reducing " ++ show p
 
--- evaluate :: NameEnv -> PRStat -> Except Error Int
--- evaluate env p = do
---   red <- reduce env p
---   case red of
---     Lit l -> return l
---     p'    -> evaluate env p'
-
-evaluate :: NameEnv -> PRExpr ->  Except Error [PRExpr] --Except Error (Int, [PRStat])
+evaluate :: NameEnv -> PRExpr ->  Except Error [PRExpr]
 evaluate env x = snd <$> runWriterT (wr x)
   where wr :: PRExpr -> WriterT [PRExpr] (Except Error) Int
         wr p = do
