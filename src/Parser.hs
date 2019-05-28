@@ -1,118 +1,143 @@
 
 module Parser (
-    PR (..)
-  , Arity
-  , Error
-  , parse
-  , expr, def
+    Parser
+  , parsePR
 ) where
 
-import Control.Monad (guard)
 import Prelude hiding (succ, const)
+import qualified Prelude as P (succ, const)
+import qualified Data.Map as Map
+import Data.Functor.Identity
 
-import Text.Read (readMaybe)
-import Control.Monad.Trans.Except
-import Text.ParserCombinators.ReadP
+import Text.Parsec
+import Text.Parsec.Expr
+import Text.Parsec.Error
+import Text.Parsec.Token
 
 import Syntax
-import Utils (removeSuffix)
 
 
-reserved :: String -> ReadP ()
-reserved s = do
-  skipSpaces
-  _ <- string s
-  skipSpaces
-  return ()
+type Parser = Parsec String NameEnv
 
-betweenReserved :: String -> String -> ReadP a -> ReadP a
-betweenReserved open close r = 
-  do
-    reserved open
-    s <- r
-    reserved close
-    return s
+prlang :: LanguageDef NameEnv
+prlang = LanguageDef {
+    commentStart = "{-"
+  , commentEnd = "-}"
+  , commentLine = "--"
+  , nestedComments = True
+  , identStart = letter <|> char '-'
+  , identLetter = letter <|> oneOf ['0'..'9']
+  , opStart = char '.'
+  , opLetter = char '.'
+  , reservedNames = [":=", "<-", "show"]
+  , reservedOpNames = ["c", "s", "pr", "Pr"]
+  , caseSensitive = True
+}
 
-number :: ReadP Int
-number = do
-  mn <- many1 (satisfy (`elem` ['0'..'9']))
-  case (readMaybe mn :: Maybe Int) of
-    Nothing -> pfail
-    Just n -> return n
+lexer :: GenTokenParser String NameEnv Identity
+lexer = makeTokenParser prlang
 
-succ :: ReadP PR
-succ = char 's' >> return Succ
+succ :: Parser PRFun
+succ = reservedOp lexer "s" >> return Succ
 
-const :: ReadP PR
+cpHelper :: Parser (Int, Int)
+cpHelper = brackets lexer $ do
+  ar <- natural lexer
+  comma lexer
+  num <- natural lexer
+  return (fromInteger ar, fromInteger num)
+
+const :: Parser PRFun
 const = do
-  reserved "c"
-  betweenReserved "[" "]" $ do
-    ar <- number
-    reserved ","
-    num <- number
-    return (Const ar num)
+  reservedOp lexer "c"
+  (ar, num) <- cpHelper
+  return (Const ar num)
 
-proj :: ReadP PR
+proj :: Parser PRFun
 proj = do
-  reserved "pr"
-  betweenReserved "[" "]" $ do
-    ar <- number
-    reserved ","
-    num <- number
-    return (Proj ar num)
+  reservedOp lexer "pr"
+  (ar, num) <- cpHelper
+  return (Proj ar num)
 
-rec :: ReadP PR
-rec = do
-  reserved "Pr"
-  betweenReserved "{" "}" $ do
-    f <- expr
-    reserved ","
-    g <- expr
-    return (Rec f g)
+prRec :: Parser PRFun
+prRec = do
+  reservedOp lexer "Pr"
+  (f1, f2) <- braces lexer $ do
+    f1 <- prFun
+    comma lexer
+    f2 <- prFun
+    return (f1, f2)
+  return (Rec f1 f2)
 
-def :: ReadP PR
+use :: Parser PRFun
+use = do
+  name <- identifier lexer
+  env  <- getState
+  case lookupFun name env of
+    Nothing -> unexpected name
+    Just f -> return f
+
+comp :: Parser PRFun
+comp = 
+  let single = choice $ map try [ use, prRec, succ, const, proj ]
+  in do
+    f <- try (parens lexer comp) <|> single
+    dot lexer
+    gs <- try (parens lexer (commaSep lexer (try comp <|> single)))
+          <|> fmap (: []) single
+    return $ Comp f gs
+
+prFun :: Parser PRFun
+prFun = choice funs <?> "function"
+  where funs = map try [ comp, use, prRec, succ, const, proj ]
+
+lit :: Parser PRExpr
+lit = Lit . fromInteger <$> natural lexer
+
+app :: Parser PRExpr
+app = do
+  f <- prFun
+  vals <- parens lexer $ commaSep lexer $ prExpr
+  return $ App f vals
+
+prExpr :: Parser PRExpr
+prExpr = try app <|> lit <?> "statement"
+
+def :: Parser PRStat
 def = do
-  name <- munch1 (`elem` ['a'..'z'])
-  reserved "="
-  e <- expr
-  return (Def name e)
+  name <- identifier lexer
+  reserved lexer ":="
+  f <- prFun
+  modifyState (putFun name f)
+  return $ Def name f
 
-use :: ReadP PR
-use = fmap Use $ do
-  name <- munch1 (`elem` ['a'..'z'])
-  guard (name `notElem` ["pr", "c", "s"])
-  return name
+assign :: Parser PRStat
+assign = do
+  name <- identifier lexer
+  reserved lexer "<-"
+  val <- prExpr
+  modifyState (putVal name val)
+  return $ Assign name val
 
-func :: ReadP PR
-func = use <++ choice [succ, const, proj, rec]
+showExpr :: Parser PRStat
+showExpr = do
+  reserved lexer "show"
+  e <- prExpr
+  return $ ShowExpr e
 
-comp :: ReadP PR
-comp = do
-  f <- func +++ betweenReserved "(" ")" comp
-  reserved "."
-  gs <- fmap (: []) func
-        +++ betweenReserved "(" ")" ((func +++ comp) `sepBy1` reserved ",")
-  return $ Comp f gs
+prStat :: Parser PRStat
+prStat = choice $ map try [ def, assign, showExpr ]
 
-app :: ReadP [PR]
-app = betweenReserved "(" ")" ((Lit <$> number) `sepBy` reserved ",")
+parsePR :: NameEnv -> SourceName -> String -> Either ParseError (NameEnv, [PRStat])
+parsePR = 
+  runParser $ do
+    whiteSpace lexer
+    stats <- semiSep1 lexer prStat
+    state <- getState
+    eof
+    return (state, stats)
 
-expr' :: ReadP PR
-expr' = do
-  fun <- def +++ func +++ comp
-  a <- option Nothing (Just <$> app)
-  case a of
-    Nothing -> return fun
-    Just x  -> return (App fun x)
-
-expr :: ReadP PR
-expr = betweenReserved "(" ")" expr' +++ expr'
-
-parse :: String -> Except Error PR
-parse s = 
-  case readP_to_S (skipSpaces >> expr) s of
-    [] -> throwE "Syntax error while parsing expression!"
-    xs -> case last xs of
-      (p, [])   -> return p
-      (_, rest) -> throwE $ "Syntax error: " 
-                         ++ removeSuffix rest s ++ "<here>" ++ rest
+main :: IO ()
+main = do
+  f <- readFile "../funs.pr"
+  print $ parsePR empty "test" f

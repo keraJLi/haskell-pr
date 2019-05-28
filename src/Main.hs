@@ -7,20 +7,19 @@ import Control.Monad.Trans.Except (runExceptT)
 
 import CommandLine
 import Interaction
-
+import Syntax (empty)
 
 execCmd :: Command -> IO ()
 execCmd Help = putStrLn usage
-execCmd Repl = repl []
+execCmd Repl = repl empty
 execCmd (Exec f) = do
   lns <- readFile f
   _   <- runExceptT $ loadFile lns
   return ()
 execCmd (Load f) = do
-  lns  <- readFile f
-  menv <- runExceptT $ loadFile lns
-  case menv of 
-    Left err  -> putStrLn err
+  menv <- runExceptT $ loadFile f
+  case menv of
+    Left err  -> print err
     Right env -> putStrLn (f ++ " loaded.") >> repl env
 
 main :: IO ()
