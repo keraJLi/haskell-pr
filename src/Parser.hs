@@ -69,8 +69,8 @@ prRec = do
     return (f1, f2)
   return (Rec f1 f2)
 
-use :: Parser PRFun
-use = do
+useFun :: Parser PRFun
+useFun = do
   name <- identifier lexer
   env  <- getState
   case lookupFun name env of
@@ -79,7 +79,7 @@ use = do
 
 comp :: Parser PRFun
 comp = 
-  let single = choice $ map try [ use, prRec, succ, const, proj ]
+  let single = choice $ map try [ useFun, prRec, succ, const, proj ]
   in do
     f <- try (parens lexer comp) <|> single
     dot lexer
@@ -89,10 +89,18 @@ comp =
 
 prFun :: Parser PRFun
 prFun = choice funs <?> "function"
-  where funs = map try [ comp, use, prRec, succ, const, proj ]
+  where funs = map try [ comp, useFun, prRec, succ, const, proj ]
 
 lit :: Parser PRExpr
 lit = Lit . fromInteger <$> natural lexer
+
+useVal :: Parser PRExpr
+useVal = do
+  name <- identifier lexer
+  env  <- getState
+  case lookupVal name env of
+    Nothing -> unexpected name
+    Just f -> return f
 
 app :: Parser PRExpr
 app = do
@@ -101,7 +109,7 @@ app = do
   return $ App f vals
 
 prExpr :: Parser PRExpr
-prExpr = try app <|> lit <?> "statement"
+prExpr = (try app <|> try useVal <|> lit) <?> "expression"
 
 def :: Parser PRStat
 def = do
@@ -126,7 +134,7 @@ showExpr = do
   return $ ShowExpr e
 
 prStat :: Parser PRStat
-prStat = choice $ map try [ def, assign, showExpr ]
+prStat = (choice $ map try [ def, assign, showExpr ]) <?> "statement"
 
 parsePR :: NameEnv -> SourceName -> String -> Either ParseError (NameEnv, [PRStat])
 parsePR = 
