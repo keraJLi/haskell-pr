@@ -12,6 +12,4 @@ ls    := (sign . sub) . (pr[2,2], pr[2,1]);
 min   := add . (mul . (sub . (c[2,1], gr . (pr[2,1], pr[2,2])), pr[2,1]), mul . ((sign . gr) . (pr[2,1], pr[2,2]), pr[2,2]));
 neg   := sub . (c[1,1], pr[1,1]);
 delta := ls . (s . pr[2,1], mul . (s . pr[2,2], s . pr[2,2]));
-sqrt  := Pr{c[0,0], add . (mul . (pr[2,2], delta), mul . (s . pr[2,2], neg . delta))};
-
-show add(10,2)
+sqrt  := Pr{c[0,0], add . (mul . (pr[2,2], delta), mul . (s . pr[2,2], neg . delta))}

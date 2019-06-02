@@ -127,14 +127,22 @@ assign = do
   modifyState (putVal name val)
   return $ Assign name val
 
-showExpr :: Parser PRStat
-showExpr = do
-  reserved lexer "show"
+makeStatement :: [String] -> (PRExpr -> PRStat) -> Parser PRStat
+makeStatement s st = do
+  choice $ map (try . reserved lexer) s
   e <- prExpr
-  return $ ShowExpr e
+  return $ st e
+
+showExpr = makeStatement ["sh", "show"] ShowExpr
+evalExpr = makeStatement ["ev", "eval", "evaluate"] EvalExpr
+traceExpr = makeStatement ["tr", "trace"] TraceExpr
+
+showEnv :: Parser PRStat
+showEnv = choice (map (try . reserved lexer) ["env", "environment"]) >> return ShowEnv
 
 prStat :: Parser PRStat
-prStat = (choice $ map try [ def, assign, showExpr ]) <?> "statement"
+prStat = (choice $ map try stats) <?> "statement"
+  where stats = [ def, assign, showExpr, evalExpr, traceExpr, showEnv ]
 
 parsePR :: NameEnv -> SourceName -> String -> Either ParseError (NameEnv, [PRStat])
 parsePR = 

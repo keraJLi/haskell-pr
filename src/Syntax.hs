@@ -5,7 +5,7 @@ module Syntax (
   , PRStat (..)
   , Arity
   , Error
-  , NameEnv
+  , NameEnv (..)
   , empty
   , lookupFun
   , lookupVal
@@ -58,6 +58,9 @@ data PRExpr = Lit Int
 data PRStat = Def String PRFun
             | Assign String PRExpr
             | ShowExpr PRExpr
+            | EvalExpr PRExpr
+            | TraceExpr PRExpr
+            | ShowEnv
   deriving Show
 
 instance Show PRFun where
